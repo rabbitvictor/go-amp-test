@@ -142,6 +142,22 @@ echo '{"name":"from stdin"}' | go-amp-test items create --data -
 > When you add or change a server endpoint, add the matching CLI command too —
 > see [AGENTS.md](AGENTS.md).
 
+## Smoke test
+
+`scripts/cli_smoke.sh` is an end-to-end check that builds the CLI, starts the
+server, and drives the endpoints through the CLI (`health`, `items create` →
+`items get` → `items list`, plus a 404 check). The server is built from the
+`Dockerfile` when Docker is available, falling back to a local `go build`:
+
+```sh
+scripts/cli_smoke.sh                  # docker if available, else local
+USE_DOCKER=1 scripts/cli_smoke.sh     # force the Dockerfile build
+USE_DOCKER=0 scripts/cli_smoke.sh     # force a local go build
+TEST_PORT=19000 scripts/cli_smoke.sh  # pin the host port
+```
+
+Requires `go`, `jq`, and (for the Docker path) `docker`.
+
 ## Database
 
 SQLite is opened in WAL mode with a busy timeout and foreign keys enabled.
