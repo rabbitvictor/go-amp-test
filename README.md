@@ -11,13 +11,19 @@ A small Go web service using [Echo](https://echo.labstack.com) v5 and SQLite
 
 ```
 cmd/server/                       application entrypoint (main package)
+cmd/cli/                          CLI client entrypoint (main package)
 internal/server/                  Echo router, middleware, and HTTP handlers
 internal/domain/                  data models / domain types
 internal/repository/              database/sql repositories (pure SQL, no ORM)
 internal/infrastructure/          DB init + migration runner
 internal/infrastructure/migrations/  forward-only *.sql migrations
 internal/config/                  Viper-based configuration loading
+internal/cli/                     Cobra commands + HTTP client for the API
 ```
+
+> **Endpoint / CLI parity:** every endpoint added to or changed in the web
+> server MUST be mirrored by a command in `internal/cli/`. See
+> [AGENTS.md](AGENTS.md) for the full policy.
 
 ## Run
 
@@ -88,6 +94,53 @@ curl -X POST http://localhost:8080/items \
 
 curl http://localhost:8080/items
 ```
+
+## CLI
+
+A Cobra-based CLI client (`cmd/cli`) talks to the running web service and
+prints JSON to stdout. Build it with:
+
+```sh
+go build -o go-amp-test ./cmd/cli
+# or run directly:
+go run ./cmd/cli health
+```
+
+### Global flags
+
+| Flag              | Env var         | Default                  | Description                |
+|-------------------|-----------------|--------------------------|----------------------------|
+| `-s, --server`    | `GO_AMP_SERVER` | `http://localhost:8080`  | Base URL of the web service |
+| `-t, --timeout`   |                 | `30s`                    | HTTP request timeout        |
+| `--format`        |                 | `json`                   | Output format: `json` or `compact` |
+
+### Commands
+
+```sh
+go-amp-test health                 # GET /health
+go-amp-test items list             # GET /items
+go-amp-test items get <id>         # GET /items/:id
+go-amp-test items create -n "name" # POST /items
+go-amp-test version                # print CLI version
+```
+
+`items create` also accepts raw JSON via `--data`, or `--data -` to read the
+body from stdin:
+
+```sh
+echo '{"name":"from stdin"}' | go-amp-test items create --data -
+```
+
+### Conventions
+
+- **stdout** receives the JSON result only (pipe-friendly); diagnostics go to
+  **stderr**.
+- **Exit codes:** `0` success, `2` bad usage (wrong args/flags), `1` runtime
+  or API error (e.g. 404, connection refused).
+- Run `go-amp-test <command> --help` for per-command help.
+
+> When you add or change a server endpoint, add the matching CLI command too —
+> see [AGENTS.md](AGENTS.md).
 
 ## Database
 
