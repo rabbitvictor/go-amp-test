@@ -1,0 +1,22 @@
+# Default configuration for go-amp-test.
+# This file is optional; environment variables override these values, and
+# built-in defaults apply when neither is set. See internal/config/config.go.
+#
+# Env var equivalents (all optional):
+#   PORT, SERVICE_NAME, SERVICE_VERSION
+#   DB_PATH, DB_MAX_OPEN_CONNS, DB_BUSY_TIMEOUT,
+#   DB_JOURNAL_MODE, DB_SYNCHRONOUS, DB_FOREIGN_KEYS
+# Set CONFIG_PATH to point Viper at a different config file.
+
+server:
+  port: "8080"
+  service_name: "go-amp-test"
+  version: "0.1.0"
+
+db:
+  path: "app.db"
+  max_open_conns: 1          # SQLite serializes writes; 1 avoids SQLITE_BUSY
+  busy_timeout: 5000         # milliseconds
+  journal_mode: "WAL"        # WAL | MEMORY | DELETE | OFF
+  synchronous: "NORMAL"      # NORMAL | FULL | OFF
+  foreign_keys: true

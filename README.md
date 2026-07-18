@@ -16,6 +16,7 @@ internal/domain/                  data models / domain types
 internal/repository/              database/sql repositories (pure SQL, no ORM)
 internal/infrastructure/          DB init + migration runner
 internal/infrastructure/migrations/  forward-only *.sql migrations
+internal/config/                  Viper-based configuration loading
 ```
 
 ## Run
@@ -24,14 +25,50 @@ internal/infrastructure/migrations/  forward-only *.sql migrations
 go run ./cmd/server
 ```
 
-The server listens on `:8080` by default. Configure with env vars:
+The server listens on `:8080` by default. Configuration is loaded with
+[Viper](https://github.com/spf13/viper) from (in order of precedence):
 
-| Variable          | Default       | Description                          |
-|-------------------|---------------|--------------------------------------|
-| `PORT`            | `8080`        | Listen port                          |
-| `SERVICE_NAME`    | `go-amp-test` | Name reported by `/health`           |
-| `SERVICE_VERSION` | `0.1.0`       | Version reported by `/health`        |
-| `DB_PATH`         | `app.db`      | SQLite database file path            |
+1. environment variables,
+2. a config file (`config.yaml` by default), and
+3. built-in defaults.
+
+The config file is optional — a `config.yaml` with documented defaults ships
+at the repo root. Set `CONFIG_PATH` to point at a different file. Viper
+searches `.`, `./config`, and `/etc/go-amp-test` when `CONFIG_PATH` is unset.
+
+### Settings
+
+| Key (YAML)            | Env var              | Default       | Description                          |
+|-----------------------|----------------------|---------------|--------------------------------------|
+| `server.port`         | `PORT`               | `8080`        | Listen port                          |
+| `server.service_name` | `SERVICE_NAME`       | `go-amp-test` | Name reported by `/health`           |
+| `server.version`      | `SERVICE_VERSION`    | `0.1.0`       | Version reported by `/health`        |
+| `db.path`             | `DB_PATH`            | `app.db`      | SQLite database file path            |
+| `db.max_open_conns`   | `DB_MAX_OPEN_CONNS`  | `1`           | Max open DB connections (SQLite serializes writes) |
+| `db.busy_timeout`     | `DB_BUSY_TIMEOUT`    | `5000`        | SQLite busy timeout, in milliseconds |
+| `db.journal_mode`     | `DB_JOURNAL_MODE`    | `WAL`         | SQLite journal mode (`WAL`/`MEMORY`/`DELETE`/`OFF`) |
+| `db.synchronous`      | `DB_SYNCHRONOUS`     | `NORMAL`      | SQLite synchronous pragma (`NORMAL`/`FULL`/`OFF`) |
+| `db.foreign_keys`     | `DB_FOREIGN_KEYS`    | `true`        | Enable SQLite foreign key enforcement |
+
+### Example config.yaml
+
+```yaml
+server:
+  port: "8080"
+  service_name: "go-amp-test"
+  version: "0.1.0"
+
+db:
+  path: "app.db"
+  max_open_conns: 1
+  busy_timeout: 5000
+  journal_mode: "WAL"
+  synchronous: "NORMAL"
+  foreign_keys: true
+```
+
+Env vars take precedence over the config file, which takes precedence over
+the defaults above.
 
 ## Endpoints
 
