@@ -176,6 +176,28 @@ To add a migration, drop a new `NNNN_description.sql` file into
 go build ./...
 ```
 
+## Makefile
+
+A `Makefile` wraps the common dev commands. Run `make help` to see every
+target with a short description; the most useful ones:
+
+```sh
+make build         # go build ./...
+make check         # build + vet + fmt-check + test (the full local gate)
+make fmt           # apply gofmt -s to the whole tree
+make build-server  # build ./cmd/server into ./bin/server
+make build-cli     # build ./cmd/cli  into ./bin/go-amp-test
+make run           # go run ./cmd/server
+make docker        # docker build -t go-amp-test .
+make smoke         # scripts/cli_smoke.sh (docker if available, else local)
+make smoke-local   # force the local go-build server path
+make smoke-docker  # force the Docker server path
+make clean         # remove ./bin
+```
+
+`IMAGE_TAG`, `CGO_ENABLED`, `TEST_PORT`, and `SMOKE_ENV` can be overridden
+from the environment, e.g. `make docker IMAGE_TAG=go-amp-test:dev`.
+
 ## Docker
 
 A multi-stage Dockerfile builds a static binary (`CGO_ENABLED=0`, since
