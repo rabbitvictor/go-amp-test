@@ -22,6 +22,7 @@ internal/
 go build ./...
 go vet ./...
 gofmt -l .        # must print nothing
+go test ./...
 go run ./cmd/server
 go run ./cmd/cli health
 ```
@@ -54,4 +55,34 @@ A PR that adds an endpoint without the corresponding CLI command is incomplete.
 - Forward-only embedded migrations in `internal/infrastructure/migrations/`.
 - Configuration via Viper: env vars > config file > defaults (see
   `internal/config/config.go`).
-- No tests yet by project policy; do not add them unless asked.
+
+## Testing policy
+
+See [`docs/testing.md`](docs/testing.md) for a full explanation of how the
+`testing` and `net/http/httptest` primitives are used in this repo.
+
+Unit tests are required and live alongside the code as `*_test.go` files in
+the same package. Add or update tests whenever you change behavior.
+
+Conventions:
+
+- **No integration tests.** Tests must not start the real server, open real
+  sockets, or touch the filesystem beyond the test process. Use `httptest`
+  and in-memory SQLite only.
+- **Repository / infrastructure tests** use an in-memory SQLite DB via
+  `infrastructure.OpenDB(ctx, infrastructure.DBConfig{Path: ":memory:",
+  MaxOpenConns: 1})` (the single-connection pool keeps the ephemeral schema
+  alive for the life of the `*sql.DB`). See
+  `internal/repository/testutil_test.go` for the shared helper.
+- **Web layer tests** drive the Echo engine through `httptest.NewServer(e)`
+  and dispatch requests via `e.ServeHTTP` (see
+  `internal/server/server_test.go`); do not construct `echo.Context` by hand.
+- **CLI HTTP client tests** point `Client` at a `httptest.NewServer` with a
+  stub `http.HandlerFunc` so no real server is needed.
+- **Pure helpers** (`writeOut`, `resolveName`, `DBConfig.DSN`, ...) get plain
+  unit tests with no I/O.
+- Keep tests fast and deterministic; assert on status codes, decoded JSON
+  bodies, and error types (`errors.Is`, type assertions for `*APIError`).
+- Run `go test -race ./...` before declaring done.
+
+A change that adds behavior without a covering test is incomplete.
