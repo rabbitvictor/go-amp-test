@@ -86,3 +86,23 @@ Conventions:
 - Run `go test -race ./...` before declaring done.
 
 A change that adds behavior without a covering test is incomplete.
+
+## Agent workflow policy
+
+Every agent session is expected to end by committing its work and opening a
+pull request — but only **after the user has reviewed and given their final
+revision**. Do not commit or open a PR preemptively while changes are still
+in flux.
+
+Concretely:
+
+1. Finish the requested work and run the full `Build & verify` checks.
+2. Present the diff/summary to the user and wait for their final revision.
+3. Once the user accepts (or after they request changes and those are made),
+   commit the work with a clear, conventional commit message.
+4. Push the branch and open a PR against the default branch, linking back to
+   the relevant context.
+
+**If it is unclear whether the user wants a PR at this point, ask explicitly
+before creating one.** Do not assume silence or a partial "looks good"
+implies approval to publish a PR.
