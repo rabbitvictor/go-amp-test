@@ -69,3 +69,23 @@ To add a migration, drop a new `NNNN_description.sql` file into
 ```sh
 go build ./...
 ```
+
+## Docker
+
+A multi-stage Dockerfile builds a static binary (`CGO_ENABLED=0`, since
+`modernc.org/sqlite` is pure Go) and runs it on a minimal distroless image.
+
+```sh
+# Build the image
+docker build -t go-amp-test .
+
+# Run it, persisting the SQLite file to a host volume
+docker run -p 8080:8080 -v go-amp-test-data:/data go-amp-test
+```
+
+The SQLite database is written to `/data/app.db` inside the container by
+default; mount `/data` to persist it. Override any env var to configure:
+
+```sh
+docker run -p 9000:9000 -e PORT=9000 -v go-amp-test-data:/data go-amp-test
+```

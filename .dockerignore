@@ -1,0 +1,19 @@
+# Exclude anything not needed for the build to keep the image context small
+# and avoid invalidating the dependency-download layer when unrelated files
+# change.
+.git
+.gitignore
+.agents
+.amp
+.env
+LICENSE
+README.md
+
+# Local SQLite databases and runtime artifacts
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Go build cache
+.cache
