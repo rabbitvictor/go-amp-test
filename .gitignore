@@ -30,3 +30,6 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Amp orb portal manifests (environment-specific)
+.amp/portals/

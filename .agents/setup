@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Install Go 1.26.5 if not already present.
+GO_VERSION="1.26.5"
+if [ ! -x "/usr/local/go/bin/go" ] || ! "/usr/local/go/bin/go" version | grep -q "go${GO_VERSION}"; then
+  echo "Installing Go ${GO_VERSION}..."
+  cd /tmp
+  curl -fsSLO "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
+  rm -rf /usr/local/go
+  tar -C /usr/local -xzf "go${GO_VERSION}.linux-amd64.tar.gz"
+  rm -f "go${GO_VERSION}.linux-amd64.tar.gz"
+  cd - >/dev/null
+fi
+
+export PATH="/usr/local/go/bin:${PATH}"
+echo "Go installed: $(go version)"

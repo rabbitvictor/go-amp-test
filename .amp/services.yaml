@@ -1,0 +1,6 @@
+services:
+  server:
+    command: go run ./cmd/server
+    port: 8080
+    portal: true
+    health: /health
