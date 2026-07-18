@@ -21,9 +21,11 @@ internal/
                   health_test.go            GET /health
                   item_test.go              POST/GET /items
                   router_test.go            route registration with DB=nil
+                  fuzz_test.go              Fuzz targets for POST/GET /items
   cli/            client_test.go            HTTP client against httptest.Server
                   output_test.go            writeOut formatting
                   items_test.go             resolveName parsing
+                  fuzz_test.go              Fuzz target for resolveName JSON parsing
 ```
 
 Run them with:
@@ -266,6 +268,76 @@ bytes written to a `bytes.Buffer`; for `resolveName` it is the returned
 string or error. These need no `httptest` and no database — they are the
 fastest and most boring tests in the suite, which is the point.
 
+## Fuzzing
+
+Native `testing.F` fuzz targets cover the untrusted-input boundaries of the
+service. Each target lives in a `fuzz_test.go` file next to the code it
+exercises and reuses the same helpers as the unit tests.
+
+| Target | Package | What it fuzzes | Invariant |
+|--------|---------|----------------|-----------|
+| `FuzzItemHandler_Create` | `internal/server` | `POST /items` JSON body via the full Echo router | always 201/400/500, never panics; on 201 the name round-trips byte-for-byte |
+| `FuzzItemHandler_Get` | `internal/server` | `:id` path param of `GET /items/:id` | always 200/404/400, never 500, never panics |
+| `FuzzItemRepository_Create` | `internal/repository` | arbitrary name strings through `Create` + `Get` against in-memory SQLite | never panics; accepted values round-trip byte-for-byte |
+| `FuzzResolveName` | `internal/cli` | `--data` JSON parsing in `resolveName` | never returns both a name and an error, never panics |
+
+A target has two parts: a seed corpus added with `f.Add`, and the fuzz
+function passed to `f.Fuzz`. Seeds cover the edge cases worth pinning (empty,
+null bytes, invalid UTF-8, non-object JSON roots, very large strings); the
+mutator then explores around them.
+
+```go
+func FuzzItemHandler_Create(f *testing.F) {
+    f.Add(`{"name":"alpha"}`)
+    f.Add(`{not json}`)
+    f.Add(`{"name":"\xff\xfe\xfd"}`)
+    f.Fuzz(func(t *testing.T, body string) {
+        srv, _ := newTestEcho(t)
+        rec := do(t, srv, http.MethodPost, "/items", body)
+        switch rec.Code {
+        case http.StatusCreated, http.StatusBadRequest, http.StatusInternalServerError:
+        default:
+            t.Fatalf("unexpected status %d", rec.Code)
+        }
+    })
+}
+```
+
+Two harness-level subtleties:
+
+- **`url.PathEscape` the path input.** `httptest.NewRequest` panics on
+  malformed URL paths, so `FuzzItemHandler_Get` escapes the fuzzed id before
+  building the path. This keeps the harness itself from panicking before the
+  handler runs, while still exercising `strconv.ParseInt` on the raw param.
+- **`t.Skip` non-hermetic branches.** `resolveName` reads stdin when
+  `data == "-"`. `FuzzResolveName` skips that input so the target stays
+  deterministic and does not block on stdin.
+
+Run the seed corpus (no mutation) with the normal test command:
+
+```sh
+go test ./...                              # runs every f.Add seed as a subtest
+```
+
+Run a short mutation pass against a single target:
+
+```sh
+go test -run=NONE -fuzz=FuzzItemHandler_Create -fuzztime=10s ./internal/server/
+```
+
+When the fuzzer finds a failing input it writes it to
+`testdata/fuzz/<TargetName>/` under the package. Commit that file so the seed
+corpus permanently guards against the regression. `-fuzz=...` without
+`-fuzztime` runs until interrupted.
+
+### When to add a fuzz target
+
+Fuzz targets are for *untrusted byte inputs* — request bodies, path/query
+params, raw CLI flags parsed as structured data. A pure helper that takes a
+typed argument and returns a typed result is better served by a table test.
+When you add a new handler, CLI parser, or repository method that ingests
+arbitrary bytes, add a `FuzzXxx` target alongside the unit tests.
+
 ## Conventions checklist
 
 When adding or changing a test:
@@ -282,3 +354,5 @@ When adding or changing a test:
       shape.
 - [ ] `go vet ./...`, `gofmt -l -s .` (clean), and `go test -race ./...`
       (green) before declaring done.
+- [ ] Any function ingesting untrusted bytes (request bodies, path
+      params, raw CLI `--data`) has a `FuzzXxx` target covering it.

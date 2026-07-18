@@ -87,6 +87,21 @@ Conventions:
 
 A change that adds behavior without a covering test is incomplete.
 
+## Fuzzing policy
+
+Functions that ingest untrusted bytes — HTTP request bodies, path/query
+params, raw CLI flags parsed as structured data — must have a `testing.F`
+fuzz target (a `FuzzXxx` function in a `fuzz_test.go` next to the code) in
+addition to their unit tests. Seed the target with edge cases (empty, null
+bytes, invalid UTF-8, non-object JSON, very large strings) and assert only
+the documented invariants (allowed status codes, no panics, byte-for-byte
+round-trips). See [Fuzzing](docs/testing.md#fuzzing) in the testing guide for
+the established patterns (`url.PathEscape` for path inputs, `t.Skip` for
+non-hermetic branches, `testdata/fuzz/` for failing inputs).
+
+A change that adds an untrusted-input surface without a covering fuzz target
+is incomplete.
+
 ## Agent workflow policy
 
 Every agent session is expected to end by committing its work and opening a
