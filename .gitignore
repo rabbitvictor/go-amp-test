@@ -33,3 +33,9 @@ go.work.sum
 
 # Amp orb portal manifests (environment-specific)
 .amp/portals/
+
+# SQLite database files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

@@ -15,3 +15,8 @@ fi
 
 export PATH="/usr/local/go/bin:${PATH}"
 echo "Go installed: $(go version)"
+
+# Expose go/gofmt on the default system PATH so supervised services (systemd)
+# and non-login shells can find them without inheriting this script's PATH.
+ln -sf /usr/local/go/bin/go /usr/local/bin/go
+ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
