@@ -22,6 +22,13 @@ func NewItemRepository(db *sql.DB) *ItemRepository {
 	return &ItemRepository{db: db}
 }
 
+// itemColumns returns the canonical, ordered column list for the items table.
+// It is the single source of truth for SELECT column lists in this repository
+// and must stay in sync with the scan order in Get and List.
+func itemColumns() string {
+	return "id, name, created_at"
+}
+
 // Create inserts a new item and returns the freshly persisted row.
 func (r *ItemRepository) Create(ctx context.Context, in domain.CreateItem) (*domain.Item, error) {
 	res, err := r.db.ExecContext(ctx, "INSERT INTO items (name) VALUES (?)", in.Name)
@@ -39,7 +46,7 @@ func (r *ItemRepository) Create(ctx context.Context, in domain.CreateItem) (*dom
 func (r *ItemRepository) Get(ctx context.Context, id int64) (*domain.Item, error) {
 	var it domain.Item
 	err := r.db.QueryRowContext(ctx,
-		"SELECT id, name, created_at FROM items WHERE id = ?", id,
+		"SELECT "+itemColumns()+" FROM items WHERE id = ?", id,
 	).Scan(&it.ID, &it.Name, &it.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
@@ -53,7 +60,7 @@ func (r *ItemRepository) Get(ctx context.Context, id int64) (*domain.Item, error
 // List returns all items, newest first.
 func (r *ItemRepository) List(ctx context.Context) ([]domain.Item, error) {
 	rows, err := r.db.QueryContext(ctx,
-		"SELECT id, name, created_at FROM items ORDER BY id DESC",
+		"SELECT "+itemColumns()+" FROM items ORDER BY id DESC",
 	)
 	if err != nil {
 		return nil, fmt.Errorf("list items: %w", err)
